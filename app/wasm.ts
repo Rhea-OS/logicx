@@ -1,5 +1,5 @@
-import mod from '#mod/main.wasm';
-import * as util from '#mod/util.js';
+import mod from 'logicx/logicx_bg.wasm';
+import * as util from 'logicx/logicx_bg.js';
 
 const wasm = new WebAssembly.Instance(new WebAssembly.Module(mod), {
     "./logicx_bg.js": util
@@ -7,4 +7,4 @@ const wasm = new WebAssembly.Instance(new WebAssembly.Module(mod), {
 
 util.__wbg_set_wasm(wasm.exports);
 
-export * from '#mod/util.js';
+export * from 'logicx/logicx_bg.js';

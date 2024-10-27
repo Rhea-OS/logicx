@@ -4,11 +4,11 @@
     "version": "0.1.0",
     "type": "module",
     "dependencies": {
-
+        "logicx": "link:./build/mod"
     },
     "scripts": {
         "build": "build phony:all phony:install",
-        "postinstall": "build build:main.wasm"
+        "preinstall": "build build:main.wasm"
     },
     "devDependencies": {
         "builder": "link:../../builder",

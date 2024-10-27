@@ -1,6 +1,7 @@
 import * as obs from 'obsidian';
 
 import LogicxView from "./view.js";
+import SettingsTab from "./settings.js";
 
 export const LOGICX_VIEW = "logicx-view";
 
@@ -20,5 +21,7 @@ export default class Logicx extends obs.Plugin {
     async onload() {
         this.registerView(LOGICX_VIEW, leaf => new LogicxView(leaf, this));
         this.registerExtensions(["logicx", "logic"], LOGICX_VIEW);
+
+        this.addSettingTab(new SettingsTab(this.app, this));
     }
 }

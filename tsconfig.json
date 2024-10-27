@@ -16,8 +16,10 @@
         "importHelpers": true,
         "strict": true,
         "paths": {
-            "#mod/main.wasm": ["../build/mod/logicx_bg.wasm"],
-            "#mod/util.js": ["../build/mod/logicx_bg.js"]
+            "#mod/main.wasm": ["./build/mod/logicx_bg.wasm"],
+            "#mod/util.js": ["./build/mod/logicx_bg.js"],
+            "logicx/logicx_bg.js": ["./build/logicx_d.ts"],
+            "logicx/logicx_bg.wasm": ["./wasm.d.ts"]
         }
     },
     "exclude": [
