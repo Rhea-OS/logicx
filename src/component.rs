@@ -23,15 +23,26 @@ pub fn logicx_component(placement: Placement) -> impl IntoView {
         .map(|i| i.outputs.len())
         .unwrap_or(0));
 
-    view!(<svg class="logicx_component" x={move || placement.pos.0 * state.read().grid_scale} y={move || placement.pos.1 * state.read().grid_scale}>
+    view!(<svg class="logicx-component" x={move || placement.pos.0 * state.read().grid_scale} y={move || placement.pos.1 * state.read().grid_scale}>
 
         <rect class="logicx-component-outline" rx=5
               width={move || inputs().max(outputs()).max(1) as f64 * state.read().grid_scale}
-              height={move || inputs().min(outputs()).max(1) as f64 * state.read().grid_scale}>
+              height={move || inputs().min(outputs()).max(1) as f64 * state.read().grid_scale} />
 
-        </rect>
+        <g class="logicx-input-terminals">{(0..inputs())
+            .map(|i| view!(<circle class="logicx-component-terminal"
+                r=5
+                cx=0
+                cy={i as f64 * state.read().grid_scale + state.read().grid_scale / 2.0} />))
+            .collect_view()}</g>
+        <g class="logicx-output-terminals">{(0..outputs())
+            .map(|i| view!(<circle class="logicx-component-terminal"
+                r=5
+                cx=move || inputs().max(outputs()).max(1) as f64 * state.read().grid_scale
+                cy={i as f64 * state.read().grid_scale + state.read().grid_scale / 2.0} />))
+            .collect_view()}</g>
 
-        {placement.label.map(|label| view!(<text x=10 y=10>{label}</text>))}
+        // {placement.label.map(|label| view!(<text x=10 y=10>{label}</text>))}
     </svg>)
 
 }

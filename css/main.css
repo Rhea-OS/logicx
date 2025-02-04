@@ -32,8 +32,23 @@ svg.logicx-surface svg:not(.logicx-surface) {
         dominant-baseline: hanging;
     }
 
+    .logicx-component {
+        --foreground: var(--text-normal);
+        --primary: var(--background-primary-alt);
+        --secondary: var(--background-secondary-alt);
+    }
+
+    .logicx-component:hover {
+        --foreground: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
+    };
+
     .logicx-component-outline {
-        stroke: var(--text-normal);
-        fill: var(--background-secondary-alt)
+        stroke: var(--foreground);
+        fill: var(--primary);
+    }
+
+    .logicx-component-terminal {
+        stroke: var(--foreground);
+        fill: var(--secondary);
     }
 }
