@@ -1,7 +1,7 @@
 use crate::component::LogicxComponent;
-use crate::LogicX;
-use leptos::prelude::*;
+use crate::{LogicX, State};
 use leptos::logging;
+use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -177,18 +177,51 @@ pub fn project() -> impl IntoView {
     let selection = RwSignal::<Vec<InstanceId>>::new(vec![]);
 
     let project = use_context::<RwSignal<Project>>().expect("Failed to get project");
+    let state = use_context::<RwSignal<State>>().expect("Failed to get state");
+
+    struct Scroll {
+        mouse_x: f64, mouse_y: f64,
+        start_x: f64, start_y: f64,
+    }
+
+    let scroll = RwSignal::<Option<Scroll>>::new(None);
 
     view!(<svg class="logicx-surface" xmlns="http://www.w3.org/2000/svg"
-        on:scroll=|e| logging::log!("Scroll: {}x{}", )>
-        <g class="components">
-            {move || project
-                .with(|project| project
-                    .body.iter()
-                    .map(|(instance, placement)| view!(<LogicxComponent placement=placement.clone() />))
-                    .collect_view())}
-        </g>
-        <g class="wires">
+        on:wheel=move |e| state.update(|state| if e.shift_key() {
+            state.scroll = (state.scroll.0 - e.delta_y(), state.scroll.1 - e.delta_x())
+        } else {
+            state.scroll = (state.scroll.0 - e.delta_x(), state.scroll.1 - e.delta_y())
+        })
+        on:mousedown=move |e| if e.button() == 1 {
+            let current_scroll = state.with(|state| state.scroll);
 
-        </g>
+            scroll.set(Some(Scroll {
+                mouse_x: e.x() as f64,
+                mouse_y: e.y() as f64,
+                start_x: current_scroll.0,
+                start_y: current_scroll.1
+            }));
+        }
+        on:mousemove=move |e| scroll.with(|scroll| if let Some(scroll) = scroll {
+            state.update(|state| state.scroll = (
+                scroll.start_x + (e.x() as f64 - scroll.mouse_x),
+                scroll.start_y + (e.y() as f64 - scroll.mouse_y),
+            ))
+        })
+        on:mouseup=move |e| if e.button() == 1 {
+            scroll.set(None);
+        }>
+        <svg x=move || state.with(|state| state.scroll.0) y=move || state.with(|state| state.scroll.1)>
+            <g class="components">
+                {move || project
+                    .with(|project| project
+                        .body.iter()
+                        .map(|(instance, placement)| view!(<LogicxComponent placement=placement.clone() />))
+                        .collect_view())}
+            </g>
+            <g class="wires">
+
+            </g>
+        </svg>
     </svg>)
 }

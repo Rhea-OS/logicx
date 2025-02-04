@@ -22,6 +22,10 @@
     height: 100%;
 }
 
+svg.logicx-surface svg:not(.logicx-surface) {
+    overflow: visible
+}
+
 .logicx-surface {
     text {
         fill: var(--text-normal);
