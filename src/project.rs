@@ -101,15 +101,22 @@ impl Project {
             .into_iter()
             .collect(),
 
-            body: vec![(
-                0,
-                Placement {
-                    component: 3,
-                    label: Some("Input".to_string()),
-                    pos: (0.0, 0.0),
-                    orientation: 0.0,
-                },
-            )]
+            body: vec![(0, Placement {
+                component: 3,
+                label: Some("Input".to_string()),
+                pos: (0.0, 0.0),
+                orientation: 0.0,
+            }), (1, Placement {
+                component: 4,
+                label: Some("Output".to_string()),
+                pos: (0.0, 1.0),
+                orientation: 0.0,
+            }), (2, Placement {
+                component: 2,
+                label: Some("And".to_string()),
+                pos: (2.0, 0.0),
+                orientation: 0.0,
+            })]
             .into_iter()
             .collect(),
             connections: HashMap::new(),

@@ -1,9 +1,7 @@
-use std::sync::Arc;
-use leptos::logging;
-use leptos::prelude::*;
-use crate::project::{Component, Placement, Project};
-use crate::project::ComponentDriver;
+use crate::project::Placement;
+use crate::project::Project;
 use crate::State;
+use leptos::prelude::*;
 
 #[component]
 pub fn logicx_component(placement: Placement) -> impl IntoView {
@@ -26,8 +24,8 @@ pub fn logicx_component(placement: Placement) -> impl IntoView {
     view!(<svg class="logicx-component" x={move || placement.pos.0 * state.read().grid_scale} y={move || placement.pos.1 * state.read().grid_scale}>
 
         <rect class="logicx-component-outline" rx=5
-              width={move || inputs().max(outputs()).max(1) as f64 * state.read().grid_scale}
-              height={move || inputs().min(outputs()).max(1) as f64 * state.read().grid_scale} />
+              width={move || inputs().min(outputs()).max(1) as f64 * state.read().grid_scale}
+              height={move || inputs().max(outputs()).max(1) as f64 * state.read().grid_scale} />
 
         <g class="logicx-input-terminals">{(0..inputs())
             .map(|i| view!(<circle class="logicx-component-terminal"
@@ -38,7 +36,7 @@ pub fn logicx_component(placement: Placement) -> impl IntoView {
         <g class="logicx-output-terminals">{(0..outputs())
             .map(|i| view!(<circle class="logicx-component-terminal"
                 r=5
-                cx=move || inputs().max(outputs()).max(1) as f64 * state.read().grid_scale
+                cx=move || inputs().min(outputs()).max(1) as f64 * state.read().grid_scale
                 cy={i as f64 * state.read().grid_scale + state.read().grid_scale / 2.0} />))
             .collect_view()}</g>
 
