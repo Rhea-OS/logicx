@@ -82,7 +82,7 @@ export default {
             loader: {
                 ".ttf": "copy"
             },
-            outdir: config.out.path
+            outfile: config.out.join("styles.css").path
         });
     },
     async "phony:install"(config) {
