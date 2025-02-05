@@ -2,6 +2,7 @@ pub mod error;
 mod project;
 mod circuit;
 mod component;
+mod wire;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -10,8 +11,9 @@ use leptos::wasm_bindgen::prelude::*;
 use leptos::web_sys::*;
 use leptos::*;
 use leptos::prelude::*;
+use leptos::svg::Svg;
 pub use error::*;
-use crate::project::Project;
+use crate::project::{InstanceId, Project, Terminal};
 
 #[wasm_bindgen(js_name=LogicXContext)]
 pub struct LogicX {
@@ -27,8 +29,10 @@ impl LogicX {
             project: RwSignal::new(Project::empty()),
             state: RwSignal::new(State {
                 grid_scale: 35.0,
+                viewport: NodeRef::new(),
+                snap: true,
                 scroll: (0.0, 0.0),
-                snap: true
+                start_connect_wire: None
             })
         }
     }
@@ -70,17 +74,23 @@ impl LogicX {
     #[wasm_bindgen(js_name=clear)]
     pub fn clear(&mut self) {
         self.project.set(Project::empty());
-
-        // if let Some(project) = Arc::get_mut(&mut self.project) {
-        //     *project = Project::empty();
-        // }
     }
+}
+
+pub(crate) struct WireConnectStart {
+    pub(crate) from: InstanceId,
+    pub(crate) start_terminal: Terminal,
+    pub(crate) to: (f64, f64)
 }
 
 pub struct State {
     pub scroll: (f64, f64),
     pub grid_scale: f64,
     pub snap: bool,
+
+    pub start_connect_wire: Option<WireConnectStart>,
+
+    pub viewport: NodeRef<Svg>
 }
 
 #[component]

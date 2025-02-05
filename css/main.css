@@ -38,7 +38,7 @@ svg.logicx-surface svg:not(.logicx-surface) {
         --secondary: var(--background-secondary-alt);
     }
 
-    .logicx-component:hover {
+    .logicx-component:hover:not(:has(.logicx-component-terminal:hover)) {
         --foreground: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
     };
 
@@ -50,5 +50,14 @@ svg.logicx-surface svg:not(.logicx-surface) {
     .logicx-component-terminal {
         stroke: var(--foreground);
         fill: var(--secondary);
+    }
+
+    .logicx-component-terminal:hover {
+        --foreground: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
+    }
+
+    .logicx-wire {
+        fill: none;
+        stroke: var(--text-normal);
     }
 }

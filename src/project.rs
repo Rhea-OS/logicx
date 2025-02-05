@@ -1,4 +1,5 @@
 use crate::component::LogicxComponent;
+use crate::wire::LogicxWire;
 use crate::{LogicX, State};
 use leptos::logging;
 use leptos::prelude::*;
@@ -7,6 +8,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
+use web_sys::SvgElement;
 
 #[derive(Serialize, Deserialize)]
 pub struct Project {
@@ -15,7 +17,7 @@ pub struct Project {
     pub(crate) body: HashMap<InstanceId, Placement>,
     pub(crate) connections: HashMap<(ComponentId, String), (ComponentId, String)>,
 
-    pub(crate) wires: Vec<Vec<(f64, f64)>>,
+    pub(crate) wires: Vec<Wire>,
 }
 
 impl Project {
@@ -101,22 +103,41 @@ impl Project {
             .into_iter()
             .collect(),
 
-            body: vec![(0, Placement {
-                component: 3,
-                label: Some("Input".to_string()),
-                pos: (0.0, 0.0),
-                orientation: 0.0,
-            }), (1, Placement {
-                component: 4,
-                label: Some("Output".to_string()),
-                pos: (0.0, 1.0),
-                orientation: 0.0,
-            }), (2, Placement {
-                component: 2,
-                label: Some("And".to_string()),
-                pos: (2.0, 0.0),
-                orientation: 0.0,
-            })]
+            body: vec![
+                (
+                    0,
+                    Placement {
+                        component: 3,
+                        instance: 0,
+
+                        label: Some("Input".to_string()),
+                        pos: (0.0, 0.0),
+                        orientation: 0.0,
+                    },
+                ),
+                (
+                    1,
+                    Placement {
+                        component: 4,
+                        instance: 1,
+
+                        label: Some("Output".to_string()),
+                        pos: (0.0, 1.0),
+                        orientation: 0.0,
+                    },
+                ),
+                (
+                    2,
+                    Placement {
+                        component: 2,
+                        instance: 2,
+
+                        label: Some("And".to_string()),
+                        pos: (2.0, 0.0),
+                        orientation: 0.0,
+                    },
+                ),
+            ]
             .into_iter()
             .collect(),
             connections: HashMap::new(),
@@ -143,6 +164,7 @@ pub struct Component {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Placement {
     pub(crate) component: ComponentId,
+    pub(crate) instance: InstanceId,
 
     pub(crate) label: Option<String>,
 
@@ -179,6 +201,23 @@ pub struct Script {
     pub(crate) script: String,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct Wire {
+    from: InstanceId,
+    from_terminal: Terminal,
+
+    points: Vec<(f64, f64)>,
+
+    to: InstanceId,
+    to_terminal: Terminal,
+}
+
+#[derive(Serialize, Deserialize)]
+pub enum Terminal {
+    Input(u64),
+    Output(u64),
+}
+
 #[component]
 pub fn project() -> impl IntoView {
     let selection = RwSignal::<Vec<InstanceId>>::new(vec![]);
@@ -187,8 +226,10 @@ pub fn project() -> impl IntoView {
     let state = use_context::<RwSignal<State>>().expect("Failed to get state");
 
     struct Scroll {
-        mouse_x: f64, mouse_y: f64,
-        start_x: f64, start_y: f64,
+        mouse_x: f64,
+        mouse_y: f64,
+        start_x: f64,
+        start_y: f64,
     }
 
     let scroll = RwSignal::<Option<Scroll>>::new(None);
@@ -209,16 +250,30 @@ pub fn project() -> impl IntoView {
                 start_y: current_scroll.1
             }));
         }
-        on:mousemove=move |e| scroll.with(|scroll| if let Some(scroll) = scroll {
-            state.update(|state| state.scroll = (
-                scroll.start_x + (e.x() as f64 - scroll.mouse_x),
-                scroll.start_y + (e.y() as f64 - scroll.mouse_y),
-            ))
-        })
+        on:mousemove=move |e| {
+            scroll.with(|scroll| if let Some(scroll) = scroll {
+                state.update(|state| state.scroll = (
+                    scroll.start_x + (e.x() as f64 - scroll.mouse_x),
+                    scroll.start_y + (e.y() as f64 - scroll.mouse_y),
+                ))
+            });
+
+            state.update(|state| if let Some(wire) = state.start_connect_wire.as_mut() {
+                wire.to = if let Some(bound) = state.viewport.with(|el| el.as_ref().map(|i: &SvgElement| i.get_bounding_client_rect())) {
+                    (e.x() as f64 - bound.x() as f64, e.y() as f64 - bound.y() as f64)
+                } else {
+                    (e.x() as f64, e.y() as f64)
+                }
+            });
+        }
         on:mouseup=move |e| if e.button() == 1 {
             scroll.set(None);
+        } else if e.button() == 0 {
+            state.update(|state| state.start_connect_wire = None)
         }>
-        <svg x=move || state.with(|state| state.scroll.0) y=move || state.with(|state| state.scroll.1)>
+        <svg node_ref=state.with(|state| state.viewport)
+        x=move || state.with(|state| state.scroll.0)
+        y=move || state.with(|state| state.scroll.1)>
             <g class="components">
                 {move || project
                     .with(|project| project
@@ -227,7 +282,28 @@ pub fn project() -> impl IntoView {
                         .collect_view())}
             </g>
             <g class="wires">
+                {move || project.with(|project| project.wires.iter()
+                    .map(|wire| view!(<LogicxWire />))
+                    .collect_view())}
 
+                {move || state.with(|state| state.start_connect_wire.as_ref().map(|wire| {
+                    let from = project.with(|project| project.body.get(&wire.from).cloned())?;
+                    let (inputs, outputs) = project.with(|project| project.components.get(&from.component).map(|comp| (
+                        comp.inputs.len(),
+                        comp.outputs.len()
+                    )))?;
+
+                    let (dx, dy) = match wire.start_terminal {
+                        Terminal::Input(terminal) => (0.0, terminal as f64 * state.grid_scale + state.grid_scale / 2.0),
+                        Terminal::Output(terminal) => (inputs.min(outputs).max(1) as f64 * state.grid_scale, terminal as f64 * state.grid_scale + state.grid_scale / 2.0)
+                    };
+
+                    Some(view!(<path class="logicx-wire" d=format!("M {sx} {sy} C {mx} {sy}, {sx} {my}, {mx} {my}",
+                        sx = from.pos.0 * state.grid_scale + dx,
+                        sy = from.pos.1 * state.grid_scale + dy,
+                        mx = wire.to.0,
+                        my = wire.to.1) />))
+                }))}
             </g>
         </svg>
     </svg>)
