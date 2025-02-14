@@ -3,6 +3,7 @@ mod project;
 mod circuit;
 mod component;
 mod wire;
+mod drag;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -13,7 +14,7 @@ use leptos::*;
 use leptos::prelude::*;
 use leptos::svg::Svg;
 pub use error::*;
-use crate::project::{InstanceId, Project, Terminal};
+use crate::project::{Coord, InstanceId, Project, Terminal};
 
 #[wasm_bindgen(js_name=LogicXContext)]
 pub struct LogicX {
@@ -31,7 +32,7 @@ impl LogicX {
                 grid_scale: 35.0,
                 viewport: NodeRef::new(),
                 snap: true,
-                scroll: (0.0, 0.0),
+                scroll: (0.0, 0.0).into(),
                 start_connect_wire: None
             })
         }
@@ -77,20 +78,33 @@ impl LogicX {
     }
 }
 
+#[derive(Clone)]
 pub(crate) struct WireConnectStart {
     pub(crate) from: InstanceId,
     pub(crate) start_terminal: Terminal,
-    pub(crate) to: (f64, f64)
+    pub(crate) to: Coord
 }
 
+#[derive(Clone)]
 pub struct State {
-    pub scroll: (f64, f64),
+    pub scroll: Coord,
     pub grid_scale: f64,
     pub snap: bool,
 
     pub start_connect_wire: Option<WireConnectStart>,
 
     pub viewport: NodeRef<Svg>
+}
+
+impl State {
+    pub fn viewport(&self) -> Coord {
+        self.viewport
+            .with(|el| el
+            .as_ref()
+            .map(|el| el.get_bounding_client_rect())
+            .map(|rect| Coord(rect.x(), rect.y()))
+            .unwrap_or(Coord(0.0, 0.0)))
+    }
 }
 
 #[component]
@@ -100,3 +114,32 @@ pub fn context_provider<T: Send + Sync + 'static>(cx: T, children: Children) -> 
     children()
 }
 
+
+pub trait Dud {
+    /// A method which tidies up long chains of dot operators for example in match statements.
+    ///
+    /// The `dud()` function makes an expression return () to avoid doing so with curly braces and a semicolon.
+    ///
+    /// # Example
+    /// ```rust
+    /// use crate::logicx::Dud;
+    ///
+    /// let mut v = vec![1, 2, 3];
+    ///
+    /// fn rand() -> f64 {
+    ///     0.3
+    /// }
+    ///
+    /// match rand() {
+    ///  x if x <= 0.5 => v.push(10),
+    ///  _ => v.get(0).dud(), // Do something which happens to return something.
+    /// // equivalent
+    ///  _ => {
+    ///     v.get(0);
+    ///  }
+    /// }
+    #[inline]
+    fn dud(self) where Self: Sized {}
+}
+
+impl<T> Dud for T where T: Sized {}

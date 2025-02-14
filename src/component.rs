@@ -1,74 +1,161 @@
-use crate::project::Placement;
-use crate::project::Project;
-use crate::{State, Terminal, WireConnectStart};
+use crate::project::Wire;
+use crate::project::{Coord, InstanceId, Project};
+use crate::project::{DragHandler, MouseState, Placement};
+use crate::Terminal;
+use crate::WireConnectStart;
+use crate::{Dud, State};
 use leptos::prelude::*;
-use leptos::web_sys::SvgElement;
+use web_sys::{MouseEvent, SvgElement};
 
 #[component]
-pub fn logicx_component(placement: Placement) -> impl IntoView {
+pub fn logicx_component(instance: InstanceId) -> impl IntoView {
     let project = use_context::<RwSignal<Project>>().expect("Failed to get project");
 
     let state = use_context::<RwSignal<State>>().expect("Failed to get state");
+    let mouse = use_context::<DragHandler>().expect("Failed to get state");
 
-    let inputs = move || {
-        project.with(|project| {
-            project
-                .components
-                .get(&placement.component)
+    let inputs = Signal::derive(move || project.with(move |project| {
+        project.body.get(&instance).and_then(move |place| {
+            project.components.get(&place.component)
                 .map(|i| i.inputs.len())
-                .unwrap_or(0)
         })
-    };
-    let outputs = move || {
-        project.with(|project| {
-            project
-                .components
-                .get(&placement.component)
+            .unwrap_or_default()
+    }));
+    let outputs = Signal::derive(move || project.with(move |project| {
+        project.body.get(&instance).and_then(move |place| {
+            project.components.get(&place.component)
                 .map(|i| i.outputs.len())
-                .unwrap_or(0)
         })
+            .unwrap_or_default()
+    }));
+
+    let component_mouse_down = move |e: MouseEvent| {
+        if e.button() == 0 {
+            mouse.update(move |mouse| {
+                if mouse.is_none() {
+                    mouse.replace(MouseState::begin(e)
+                        .start_coord(project
+                            .read()
+                            .body
+                            .get(&instance)
+                            .map(|placement| placement.pos)
+                            .unwrap_or_default())
+                        .on_move(move |mouse| {
+                            project.update(move |project| {
+                                if let Some(placement) = project.body.get_mut(&instance) {
+                                    state.with(|state| {
+                                        placement.pos = mouse.start_coord.unwrap_or_default() + (mouse.delta() / state.grid_scale);
+
+                                        if state.snap {
+                                            placement.pos = placement.pos.quant(0.25);
+                                        }
+                                    });
+                                }
+                            });
+                    }));
+                }
+            });
+        }
     };
 
-    view!(<svg class="logicx-component" x={move || placement.pos.0 * state.read().grid_scale} y={move || placement.pos.1 * state.read().grid_scale}>
+    let terminal_mouse_down = move |e: MouseEvent, terminal: Terminal| {
+        if e.button() == 0 {
+            e.prevent_default();
+
+            mouse.update(move |mouse| {
+                if mouse.is_none() {
+                    mouse.replace(
+                        MouseState::begin(e)
+                            .on_move(move |mouse| {
+                                state.update(move |state| {
+                                    state.start_connect_wire.replace(WireConnectStart {
+                                        from: instance,
+                                        start_terminal: terminal,
+                                        to: mouse.current_pos - state.viewport(),
+                                    });
+                                });
+                            })
+                            .on_release(move |mouse| { // Drop wire
+                                state.update(|state| {
+                                    state.start_connect_wire.take();
+                                })
+                            }),
+                    );
+                }
+            });
+        }
+    };
+
+    let terminal_mouse_up = move |e: MouseEvent, terminal: Terminal| {
+        mouse.update(move |mouse| {
+            if let Some(mouse) = mouse.take() {
+                if mouse.button == e.button() {
+                    state.update(|state| {
+                        if let Some(start) = state.start_connect_wire.take() {
+                            let (input, output) =
+                                match ((start.from, start.start_terminal), (instance, terminal)) {
+                                    (
+                                        (input_instance, Terminal::Input(i)),
+                                        (output_instance, Terminal::Output(o)),
+                                    ) => ((input_instance, i), (output_instance, o)),
+                                    (
+                                        (output_instance, Terminal::Output(o)),
+                                        (input_instance, Terminal::Input(i)),
+                                    ) => ((input_instance, i), (output_instance, o)),
+                                    _ => return,
+                                };
+
+                            project.update(|project| {
+                                if let Some(con) = project.connections.get_mut(&output) {
+                                    con.push(input);
+                                } else {
+                                    project.connections.insert(output, vec![input]);
+                                }
+
+                                project.wires.push(Wire {
+                                    from: output.0,
+                                    from_terminal: Terminal::Output(output.1),
+                                    points: vec![],
+                                    to: input.0,
+                                    to_terminal: Terminal::Input(input.1),
+                                });
+                            });
+                        }
+                    })
+                }
+            }
+        });
+    };
+
+    view!(<svg class="logicx-component"
+        x={move || project.read().body.get(&instance).map(|p| p.pos.0).unwrap_or(0.0) * state.read().grid_scale}
+        y={move || project.read().body.get(&instance).map(|p| p.pos.1).unwrap_or(0.0) * state.read().grid_scale}
+        on:mousedown=move |e| component_mouse_down(e)>
         <rect class="logicx-component-outline" rx=5
-              width={move || inputs().min(outputs()).max(1) as f64 * state.read().grid_scale}
-              height={move || inputs().max(outputs()).max(1) as f64 * state.read().grid_scale} />
+              width={move || inputs.read().min(*outputs.read()).max(1) as f64 * state.read().grid_scale}
+              height={move || inputs.read().max(*outputs.read()).max(1) as f64 * state.read().grid_scale} />
 
         // {placement.label.map(|label| view!(<text x=0 y=0>{label}</text>))}
 
         <g class="logicx-input-terminals">{(0..inputs())
-            .map(|i| view!(<circle class="logicx-component-terminal"
+            .map(|i| (i as u64, Terminal::Input(i as u64)))
+            .map(|(i, start_terminal)| view!(<circle class="logicx-component-terminal"
                 r=5
                 cx=0
                 cy={i as f64 * state.read().grid_scale + state.read().grid_scale / 2.0}
-                on:mousedown=move |e| if e.button() == 0 {
-                    state.update(|state| state.start_connect_wire = Some(WireConnectStart {
-                        from: placement.instance,
-                        start_terminal: Terminal::Input(i as u64),
-                        to: if let Some(bound) = state.viewport.with(|el| el.as_ref().map(|i: &SvgElement| i.get_bounding_client_rect())) {
-                            (e.x() as f64 - bound.x() as f64, e.y() as f64 - bound.y() as f64)
-                        } else {
-                            (e.x() as f64, e.y() as f64)
-                        }
-                    }))
-                } />))
+                on:mousedown=move |e| terminal_mouse_down(e, start_terminal)
+                on:mouseup=move |e| terminal_mouse_up(e, start_terminal)
+                />))
             .collect_view()}</g>
-        <g class="logicx-output-terminals">{(0..outputs())
-            .map(|i| view!(<circle class="logicx-component-terminal"
+        <g class="logicx-output-terminals">{(0..*outputs.read())
+            .map(|i| (i as u64, Terminal::Output(i as u64)))
+            .map(|(i, start_terminal)| view!(<circle class="logicx-component-terminal"
                 r=5
-                cx=move || inputs().min(outputs()).max(1) as f64 * state.read().grid_scale
+                cx=move || inputs.read().min(*outputs.read()).max(1) as f64 * state.read().grid_scale
                 cy={i as f64 * state.read().grid_scale + state.read().grid_scale / 2.0}
-                on:mousedown=move |e| if e.button() == 0 {
-                    state.update(|state| state.start_connect_wire = Some(WireConnectStart {
-                        from: placement.instance,
-                        start_terminal: Terminal::Output(i as u64),
-                        to: if let Some(bound) = state.viewport.with(|el| el.as_ref().map(|i: &SvgElement| i.get_bounding_client_rect())) {
-                            (e.x() as f64 - bound.x() as f64, e.y() as f64 - bound.y() as f64)
-                        } else {
-                            (e.x() as f64, e.y() as f64)
-                        }
-                    }))
-                }/>))
+                on:mousedown=move |e| terminal_mouse_down(e, start_terminal)
+                on:mouseup=move |e| terminal_mouse_up(e, start_terminal)
+                />))
             .collect_view()}</g>
     </svg>)
 }
