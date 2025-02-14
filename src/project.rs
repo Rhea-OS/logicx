@@ -389,7 +389,11 @@ pub fn project() -> impl IntoView {
                 width=move || state.get().grid_scale / 4.0
                 height=move || state.get().grid_scale / 4.0
                 patternUnits="userSpaceOnUse">
-                <rect x=0 y=0 width=move || state.get().grid_scale / 4.0 height=move || state.get().grid_scale / 4.0 stroke="grey" fill="none" stroke-opacity="0.25" stroke-width="0.25" />
+
+                // <path d="M 0 0 L 0 0" stroke="grey" fill="none" stroke-opacity="0.25" stroke-width="0.25" width=move || state.get().grid_scale / 4.0 height=move || state.get().grid_scale / 4.0 />
+                // <rect x=0 y=0 width=move || state.get().grid_scale / 4.0 height=move || state.get().grid_scale / 4.0 stroke="grey" fill="none" stroke-opacity="0.25" stroke-width="0.25" />
+
+                <circle r=1 cx=0 cy=0 fill="grey" fill-opacity="0.25" />
             </pattern>
             <pattern id="grid"
                 x=move || state.get().scroll.0
@@ -397,7 +401,10 @@ pub fn project() -> impl IntoView {
                 width=move || state.get().grid_scale
                 height=move || state.get().grid_scale
                 patternUnits="userSpaceOnUse">
-                <rect x=0 y=0 width=move || state.get().grid_scale height=move || state.get().grid_scale stroke="grey" fill="url(#grid-small)" stroke-opacity="0.5" stroke-width="0.5" />
+
+                <rect x=0 y=0 width=move || state.get().grid_scale height=move || state.get().grid_scale fill="url(#grid-small)" />
+
+                <circle r=1 cx=0 cy=0 fill="grey" fill-opacity="0.5" />
             </pattern>
         </defs>
 

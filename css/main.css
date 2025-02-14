@@ -66,4 +66,9 @@ svg.logicx-surface svg:not(.logicx-surface) {
 
         z-index: 1;
     }
+
+    .logicx-wire:hover {
+        stroke: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
+
+    }
 }
