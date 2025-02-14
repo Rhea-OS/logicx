@@ -57,18 +57,17 @@ impl LogicX {
 
     #[wasm_bindgen(js_name=getData)]
     pub fn get_data(&self) -> String {
-        serde_json::to_string_pretty(&self.project)
-            .unwrap_throw()
+        match serde_json::to_string_pretty(&self.project) {
+            Ok(project) => project,
+            Err(err) => panic!("Panic: {:?}", err)
+        }
     }
 
     #[wasm_bindgen(js_name=setData)]
     pub fn set_data(&mut self, data: String, clear: bool) {
-        if let Ok(project) = serde_json::from_str(data.as_str()) {
-            if clear {
-                self.clear();
-            }
-
-            self.project = project;
+        match serde_json::from_str(data.as_str()) {
+            Ok(project) => self.project.set(project),
+            Err(err) => panic!("Panic: {:?}", err)
         }
     }
 

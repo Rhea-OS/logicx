@@ -1,6 +1,6 @@
 use crate::component::LogicxComponent;
 use crate::wire::LogicxWire;
-use crate::State;
+use crate::{ContextProvider, State};
 use leptos::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
@@ -350,103 +350,104 @@ pub fn project() -> impl IntoView {
     let state = use_context::<RwSignal<State>>().expect("Failed to get state");
 
     let mouse = DragHandler::new(None);
-    provide_context(mouse);
 
-    view!(<svg class="logicx-surface" xmlns="http://www.w3.org/2000/svg"
-        on:wheel=move |e| state.update(|state| if e.shift_key() {
-            state.scroll -= (e.delta_y(), e.delta_x()).into()
-        } else {
-            state.scroll -= (e.delta_x(), e.delta_y()).into()
-        })
+    view!(<ContextProvider cx=mouse>
+        <svg class="logicx-surface" xmlns="http://www.w3.org/2000/svg"
+            on:wheel=move |e| state.update(|state| if e.shift_key() {
+                state.scroll -= (e.delta_y(), e.delta_x()).into()
+            } else {
+                state.scroll -= (e.delta_x(), e.delta_y()).into()
+            })
 
-        on:mousedown=move |e| mouse.update(|mouse| {
-            if e.button() == 1 {
-                mouse.replace(MouseState::begin(e)
-                    .on_move(move |mouse| state.update(move |state| {
-                        state.scroll += mouse.delta_tick();
-                    })));
-            }
-        })
+            on:mousedown=move |e| mouse.update(|mouse| {
+                if e.button() == 1 {
+                    mouse.replace(MouseState::begin(e)
+                        .on_move(move |mouse| state.update(move |state| {
+                            state.scroll += mouse.delta_tick();
+                        })));
+                }
+            })
 
-        on:mousemove=move |e| mouse.update(|mouse| if let Some(mouse) = mouse.as_mut() {
-            mouse.prev_pos = mouse.current_pos;
-            mouse.current_pos = Coord(e.x() as f64, e.y() as f64);
+            on:mousemove=move |e| mouse.update(|mouse| if let Some(mouse) = mouse.as_mut() {
+                mouse.prev_pos = mouse.current_pos;
+                mouse.current_pos = Coord(e.x() as f64, e.y() as f64);
 
-            if let Some(ref onmove) = mouse.on_move {
-                onmove(mouse)
-            }
-        })
-        on:mouseup=move |e| mouse.update(|mouse| match mouse.take() {
-            Some(mut mouse) if mouse.button == e.button() => if let Some(on_release) = mouse.on_release.take() {
-                on_release(mouse)
-            },
-            _ => {}
-        })>
+                if let Some(ref onmove) = mouse.on_move {
+                    onmove(mouse)
+                }
+            })
+            on:mouseup=move |e| mouse.update(|mouse| match mouse.take() {
+                Some(mut mouse) if mouse.button == e.button() => if let Some(on_release) = mouse.on_release.take() {
+                    on_release(mouse)
+                },
+                _ => {}
+            })>
 
-        <defs>
-            <pattern id="grid-small"
-                x=0 y=0
-                width=move || state.get().grid_scale / 4.0
-                height=move || state.get().grid_scale / 4.0
-                patternUnits="userSpaceOnUse">
+            <defs>
+                <pattern id="grid-small"
+                    x=0 y=0
+                    width=move || state.get().grid_scale / 4.0
+                    height=move || state.get().grid_scale / 4.0
+                    patternUnits="userSpaceOnUse">
 
-                // <path d="M 0 0 L 0 0" stroke="grey" fill="none" stroke-opacity="0.25" stroke-width="0.25" width=move || state.get().grid_scale / 4.0 height=move || state.get().grid_scale / 4.0 />
-                // <rect x=0 y=0 width=move || state.get().grid_scale / 4.0 height=move || state.get().grid_scale / 4.0 stroke="grey" fill="none" stroke-opacity="0.25" stroke-width="0.25" />
+                    // <path d="M 0 0 L 0 0" stroke="grey" fill="none" stroke-opacity="0.25" stroke-width="0.25" width=move || state.get().grid_scale / 4.0 height=move || state.get().grid_scale / 4.0 />
+                    // <rect x=0 y=0 width=move || state.get().grid_scale / 4.0 height=move || state.get().grid_scale / 4.0 stroke="grey" fill="none" stroke-opacity="0.25" stroke-width="0.25" />
 
-                <circle r=1 cx=0 cy=0 fill="grey" fill-opacity="0.25" />
-            </pattern>
-            <pattern id="grid"
-                x=move || state.get().scroll.0
-                y=move || state.get().scroll.1
-                width=move || state.get().grid_scale
-                height=move || state.get().grid_scale
-                patternUnits="userSpaceOnUse">
+                    <circle r=1 cx=0 cy=0 fill="grey" fill-opacity="0.25" />
+                </pattern>
+                <pattern id="grid"
+                    x=move || state.get().scroll.0
+                    y=move || state.get().scroll.1
+                    width=move || state.get().grid_scale
+                    height=move || state.get().grid_scale
+                    patternUnits="userSpaceOnUse">
 
-                <rect x=0 y=0 width=move || state.get().grid_scale height=move || state.get().grid_scale fill="url(#grid-small)" />
+                    <rect x=0 y=0 width=move || state.get().grid_scale height=move || state.get().grid_scale fill="url(#grid-small)" />
 
-                <circle r=1 cx=0 cy=0 fill="grey" fill-opacity="0.5" />
-            </pattern>
-        </defs>
+                    <circle r=1 cx=0 cy=0 fill="grey" fill-opacity="0.5" />
+                </pattern>
+            </defs>
 
-        <Show when=move || state.get().snap>
-            <rect fill="url(#grid)" width="100%" height="100%" />
-        </Show>
+            <Show when=move || state.get().snap>
+                <rect fill="url(#grid)" width="100%" height="100%" />
+            </Show>
 
-        <svg node_ref=state.with(|state| state.viewport)
-            x=move || state.with(|state| state.scroll.0)
-            y=move || state.with(|state| state.scroll.1)>
+            <svg node_ref=state.with(|state| state.viewport)
+                x=move || state.with(|state| state.scroll.0)
+                y=move || state.with(|state| state.scroll.1)>
 
-            <g class="wires">
-                {move || project.with(|project| project.wires.iter()
-                    .map(|wire| view!(<LogicxWire wire=wire.clone() />))
-                    .collect_view())}
-
-                {move || state.with(|state| state.start_connect_wire.as_ref().map(|wire| {
-                    let from = project.with(|project| project.body.get(&wire.from).cloned())?;
-                    let (inputs, outputs) = project.with(|project| project.components.get(&from.component).map(|comp| (
-                        comp.inputs.len(),
-                        comp.outputs.len()
-                    )))?;
-
-                    let (dx, dy) = match wire.start_terminal {
-                        Terminal::Input(terminal) => (0.0, terminal as f64 * state.grid_scale + state.grid_scale / 2.0),
-                        Terminal::Output(terminal) => (inputs.min(outputs).max(1) as f64 * state.grid_scale, terminal as f64 * state.grid_scale + state.grid_scale / 2.0)
-                    };
-
-                    Some(view!(<path class="logicx-wire" d=format!("M {sx} {sy} C {mx} {sy}, {sx} {my}, {mx} {my}",
-                        sx = from.pos.0 * state.grid_scale + dx,
-                        sy = from.pos.1 * state.grid_scale + dy,
-                        mx = wire.to.0,
-                        my = wire.to.1) />))
-                }))}
-            </g>
-            <g class="components">
-                {move || project
-                    .with(|project| project
-                        .body.iter()
-                        .map(|(instance, placement)| view!(<LogicxComponent instance=placement.instance />))
+                <g class="wires">
+                    {move || project.with(|project| project.wires.iter()
+                        .map(|wire| view!(<LogicxWire wire=wire.clone() />))
                         .collect_view())}
-            </g>
+
+                    {move || state.with(|state| state.start_connect_wire.as_ref().map(|wire| {
+                        let from = project.with(|project| project.body.get(&wire.from).cloned())?;
+                        let (inputs, outputs) = project.with(|project| project.components.get(&from.component).map(|comp| (
+                            comp.inputs.len(),
+                            comp.outputs.len()
+                        )))?;
+
+                        let (dx, dy) = match wire.start_terminal {
+                            Terminal::Input(terminal) => (0.0, terminal as f64 * state.grid_scale + state.grid_scale / 2.0),
+                            Terminal::Output(terminal) => (inputs.min(outputs).max(1) as f64 * state.grid_scale, terminal as f64 * state.grid_scale + state.grid_scale / 2.0)
+                        };
+
+                        Some(view!(<path class="logicx-wire" d=format!("M {sx} {sy} C {mx} {sy}, {sx} {my}, {mx} {my}",
+                            sx = from.pos.0 * state.grid_scale + dx,
+                            sy = from.pos.1 * state.grid_scale + dy,
+                            mx = wire.to.0,
+                            my = wire.to.1) />))
+                    }))}
+                </g>
+                <g class="components">
+                    {move || project
+                        .with(|project| project
+                            .body.iter()
+                            .map(|(instance, placement)| view!(<LogicxComponent instance=placement.instance />))
+                            .collect_view())}
+                </g>
+            </svg>
         </svg>
-    </svg>)
+    </ContextProvider>)
 }

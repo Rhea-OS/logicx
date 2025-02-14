@@ -15,7 +15,6 @@ export default class LogicxView extends obs.TextFileView implements LogicxFile {
     }
 
     getViewData(): string {
-        console.log("Saving");
         return this.logicx.getData();
     }
 
