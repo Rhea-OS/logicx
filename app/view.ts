@@ -7,11 +7,18 @@ import * as wasm from './wasm.js';
 export default class LogicxView extends obs.TextFileView implements LogicxFile {
 
     private logicx: wasm.LogicXContext;
+    private toggleEdit: obs.ExtraButtonComponent;
 
     constructor(leaf: obs.WorkspaceLeaf, private plugin: Logicx) {
         super(leaf);
 
         this.logicx = new wasm.LogicXContext();
+        this.toggleEdit = new obs.ExtraButtonComponent(this.containerEl.querySelector(".view-actions")!)
+            .setIcon(this.logicx.getState().edit ? 'pencil' : 'play')
+            .onClick(() => {
+                const state = this.logicx.getState();
+                return this.logicx.setState(state.withEdit(!state.edit));
+            });
     }
 
     getViewData(): string {
@@ -35,5 +42,7 @@ export default class LogicxView extends obs.TextFileView implements LogicxFile {
             this.logicx.mount(this.contentEl);
         else
             this.logicx.mount(this.contentEl.createDiv());
+
+        this.logicx.onStateChanged(state => this.toggleEdit.setIcon(state.edit ? 'pencil' : 'play'));
     }
 }
