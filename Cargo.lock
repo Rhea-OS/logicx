@@ -894,6 +894,7 @@ dependencies = [
  "backtrace",
  "console_error_panic_hook",
  "leptos",
+ "regex",
  "serde",
  "serde_json",
  "web-sys",

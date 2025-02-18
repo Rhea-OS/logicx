@@ -1,11 +1,16 @@
+use std::cell::{LazyCell, OnceCell};
 use crate::component::LogicxComponent;
 use crate::wire::LogicxWire;
 use crate::{ContextProvider, State};
 use leptos::prelude::*;
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer, Serializer};
 use serde::Serialize;
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
+use std::hash::Hash;
 use std::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
+use regex::Regex;
+use serde::de::{Unexpected, Visitor};
 use web_sys::MouseEvent;
 
 #[derive(Serialize, Deserialize)]
@@ -16,9 +21,109 @@ pub struct Project {
 
     // The datastructure holds connections in a logically-reversed order to facilitate 1-n relationship
     // Connections are represented as _Output feeds the following inputs_
-    pub(crate) connections: HashMap<(InstanceId, u64), Vec<(InstanceId, u64)>>,
+    pub(crate) connections: HashMap<Connection, Vec<Connection>>,
+
+    // TODO: convert (InstanceId, u64) into a string-serialisable type
 
     pub(crate) wires: Vec<Wire>,
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct Connection {
+    pub(crate) instance: InstanceId,
+    pub(crate) terminal: Terminal
+}
+
+impl Connection {
+    pub(crate) fn input(instance: InstanceId, terminal: u64) -> Self {
+        Self {
+            instance,
+            terminal: Terminal::Input(terminal)
+        }
+    }
+
+    pub(crate) fn output(instance: InstanceId, terminal: u64) -> Self {
+        Self {
+            instance,
+            terminal: Terminal::Output(terminal)
+        }
+    }
+}
+
+impl Display for Connection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self { instance, terminal: Terminal::Input(i) } => write!(f, "I{}:{}", instance, i),
+            Self { instance, terminal: Terminal::Output(i) } => write!(f, "O{}:{}", instance, i),
+        }
+    }
+}
+
+impl Serialize for Connection {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for Connection {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>
+    {
+        deserializer.deserialize_str(ConnectionVisitor)
+    }
+}
+
+struct  ConnectionVisitor;
+const CONNECTION_REGEX: LazyCell<Regex> = LazyCell::new(|| Regex::new(r"^(?<type>[IOio])(?<instance>\d+):(?<terminal>\d+)$").expect("Failed to parse RegExp"));
+
+impl Visitor<'_> for ConnectionVisitor {
+    type Value = Connection;
+
+    fn expecting(&self, f: &mut Formatter) -> std::fmt::Result {
+        write!(f, "Expecting a connection of format /^[IOio]instance:terminal$/")
+    }
+
+    fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        let connection = CONNECTION_REGEX.captures(v)
+            .ok_or(serde::de::Error::custom("Connection does not match the expected format"))?;
+
+        let instance = connection.name("instance")
+            .ok_or(serde::de::Error::missing_field("instance"))
+            .and_then(|i| i.as_str().parse().map_err(|err| {
+                serde::de::Error::invalid_type(Unexpected::Str(i.as_str()), &"Instance")
+            }))?;
+
+        let terminal = connection.name("terminal")
+            .ok_or(serde::de::Error::missing_field("terminal"))
+            .and_then(|i| i.as_str().parse().map_err(|err| {
+                serde::de::Error::invalid_type(Unexpected::Str(i.as_str()), &"Terminal")
+            }))?;
+
+        let r#type = match connection.name("type").map(|i| i.as_str()) {
+            Some("i") | Some("I") => Ok(Terminal::Input(terminal)),
+            Some("o") | Some("O") => Ok(Terminal::Output(terminal)),
+            Some(i) => Err(serde::de::Error::invalid_value(Unexpected::Str(i), &"Terminal type must be one of 'ioIO'")),
+            None => Err(serde::de::Error::missing_field("terminal")),
+        }?;
+
+        Ok(Connection {
+            instance,
+            terminal: r#type
+        })
+    }
+}
+
+impl Hash for Connection {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.to_string().hash(state);
+    }
 }
 
 impl Project {
@@ -213,7 +318,7 @@ pub struct Wire {
     pub(crate) to_terminal: Terminal,
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Terminal {
     Input(u64),
     Output(u64),

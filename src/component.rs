@@ -1,4 +1,4 @@
-use crate::project::Wire;
+use crate::project::{Connection, Wire};
 use crate::project::{Coord, InstanceId, Project};
 use crate::project::{DragHandler, MouseState, Placement};
 use crate::Terminal;
@@ -97,11 +97,11 @@ pub fn logicx_component(instance: InstanceId) -> impl IntoView {
                                     (
                                         (input_instance, Terminal::Input(i)),
                                         (output_instance, Terminal::Output(o)),
-                                    ) => ((input_instance, i), (output_instance, o)),
+                                    ) => (Connection::input(input_instance, i), Connection::output(output_instance, o)),
                                     (
                                         (output_instance, Terminal::Output(o)),
                                         (input_instance, Terminal::Input(i)),
-                                    ) => ((input_instance, i), (output_instance, o)),
+                                    ) => (Connection::input(input_instance, i), Connection::output(output_instance, o)),
                                     _ => return,
                                 };
 
@@ -113,11 +113,11 @@ pub fn logicx_component(instance: InstanceId) -> impl IntoView {
                                 }
 
                                 project.wires.push(Wire {
-                                    from: output.0,
-                                    from_terminal: Terminal::Output(output.1),
+                                    from: output.instance,
+                                    from_terminal: output.terminal,
                                     points: vec![],
-                                    to: input.0,
-                                    to_terminal: Terminal::Input(input.1),
+                                    to: input.instance,
+                                    to_terminal: input.terminal,
                                 });
                             });
                         }
