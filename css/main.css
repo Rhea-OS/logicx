@@ -27,6 +27,10 @@ svg.logicx-surface svg:not(.logicx-surface) {
 }
 
 .logicx-surface {
+    .backdrop-pattern {
+        fill: var(--color-base-70);
+    }
+
     text {
         fill: var(--text-normal);
         dominant-baseline: hanging;

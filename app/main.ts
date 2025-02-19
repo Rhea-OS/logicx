@@ -30,7 +30,7 @@ export default class LogicX extends obs.Plugin {
         super(app, manifest);
 
         loadWasm()
-            .then(() => console.log(logicx));
+            .finally();
     }
 
     async onload() {
