@@ -1,18 +1,18 @@
 import * as obs from 'obsidian';
 import {LogicxFile} from "./LogicxFile.js";
 
-import Logicx, {LOGICX_VIEW} from "./main.js";
-import * as wasm from './wasm.js';
+import LogicX, {LOGICX_VIEW} from "./main.js";
+import {logicx} from './main.js';
 
 export default class LogicxView extends obs.TextFileView implements LogicxFile {
 
-    private logicx: wasm.LogicXContext;
+    private logicx: logicx.LogicXContext;
     private toggleEdit: obs.ExtraButtonComponent;
 
-    constructor(leaf: obs.WorkspaceLeaf, private plugin: Logicx) {
+    constructor(leaf: obs.WorkspaceLeaf, private plugin: LogicX) {
         super(leaf);
 
-        this.logicx = new wasm.LogicXContext();
+        this.logicx = new logicx.LogicXContext();
         this.toggleEdit = new obs.ExtraButtonComponent(this.containerEl.querySelector(".view-actions")!)
             .setIcon(this.logicx.getState().edit ? 'pencil' : 'play')
             .onClick(() => {

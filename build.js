@@ -14,6 +14,7 @@ export default {
         const out = config.out.join("mod");
         const wasmPack = cp.spawn('wasm-pack', [
             'build',
+            '--dev',
             '--out-dir',
             out.path,
         ], {

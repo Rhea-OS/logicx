@@ -1,9 +1,14 @@
 import * as obs from 'obsidian';
-
-import LogicxView from "./view.js";
 import SettingsTab from "./settings.js";
+import LogicxView from "./view.js";
 
-import * as logicx from './wasm.js';
+import mod from 'logicx/logicx_bg.wasm';
+
+import * as logicx from 'logicx/logicx_bg.js';
+
+export {
+    logicx,
+};
 
 export const LOGICX_VIEW = "logicx-view";
 
@@ -15,12 +20,18 @@ export const default_settings: Settings = {
 
 };
 
-export default class Logicx extends obs.Plugin {
-
+export default class LogicX extends obs.Plugin {
     settingsTab: SettingsTab | null = null;
     settings: Settings = default_settings;
 
     currentFile: obs.TFile | null = null;
+
+    constructor(app: obs.App, manifest: obs.PluginManifest) {
+        super(app, manifest);
+
+        loadWasm()
+            .then(() => console.log(logicx));
+    }
 
     async onload() {
         this.registerView(LOGICX_VIEW, leaf => new LogicxView(leaf, this));
@@ -45,4 +56,13 @@ export default class Logicx extends obs.Plugin {
 
         this.addSettingTab(new SettingsTab(this.app, this));
     }
+}
+
+async function loadWasm() {
+    const wasm = await WebAssembly.compile(mod)
+        .then(mod => WebAssembly.instantiate(mod, {
+            "./logicx_bg.js": logicx
+        }));
+
+    logicx.__wbg_set_wasm(wasm.exports);
 }

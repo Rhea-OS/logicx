@@ -15,3 +15,6 @@ serde_json = "1.0.138"
 regex = "1.11.1"
 
 web-sys = { version = "0.3.77", features = ["DomRect", "Element"] }
+
+[package.metadata.wasm-pack.profile.dev.wasm-bindgen]
+dwarf-debug-info = true
