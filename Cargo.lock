@@ -897,6 +897,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+ "signal",
  "web-sys",
 ]
 
@@ -1429,6 +1430,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "087eca61bc8f93d868b8c10ca058da358fd7aaeb7bc8415b572f9f3f27ce0b93"
 dependencies = [
  "server_fn_macro",
+ "syn",
+]
+
+[[package]]
+name = "signal"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
  "syn",
 ]
 

@@ -7,8 +7,8 @@ use web_sys::MouseEvent;
 pub fn logicx_surface(children: Children) -> impl IntoView {
     let selection = RwSignal::<Vec<InstanceId>>::new(vec![]);
 
-    let project = use_context::<RwSignal<Project>>().expect("Failed to get project");
-    let state = use_context::<RwSignal<State>>().expect("Failed to get state");
+    let project = use_context::<ArcRwSignal<Project>>().expect("Failed to get project");
+    let state = use_context::<ArcRwSignal<State>>().expect("Failed to get state");
 
     let mouse = DragHandler::new(None);
 

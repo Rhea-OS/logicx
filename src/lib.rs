@@ -2,20 +2,26 @@ pub mod error;
 pub mod components;
 pub mod project;
 
-use crate::components::*;
 use std::rc::Rc;
-use leptos::wasm_bindgen::prelude::*;
-use leptos::web_sys::*;
-use leptos::*;
-use leptos::prelude::*;
-use leptos::svg::Svg;
 pub use error::*;
-use crate::project::{Coord, InstanceId, Project, Terminal};
+use leptos::{
+    prelude::*,
+    web_sys::*,
+    wasm_bindgen::prelude::*,
+    svg::Svg
+};
+use crate::{
+    components::*,
+    project::Coord,
+    project::InstanceId,
+    project::Project,
+    project::Terminal
+};
 
 #[wasm_bindgen(js_name=LogicXContext)]
 pub struct LogicX {
-    project: RwSignal<Project>,
-    state: RwSignal<State>,
+    project: ArcRwSignal<Project>,
+    state: ArcRwSignal<State>,
 }
 
 #[wasm_bindgen(js_class=LogicXContext)]
@@ -23,8 +29,8 @@ impl LogicX {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self {
-            project: RwSignal::new(Project::empty()),
-            state: RwSignal::new(State::new()),
+            project: ArcRwSignal::new(Project::empty()),
+            state: ArcRwSignal::new(State::new()),
         }
     }
 
